@@ -81,10 +81,6 @@ func (a *proxyHandler) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
-func handleNotFound(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
-}
-
 func (a *proxyHandler) handleProxy(w http.ResponseWriter, r *http.Request) {
 	clientIP, err := clientIPFromRequest(r, a.cfg.ClientIPHeader)
 	if err != nil {
