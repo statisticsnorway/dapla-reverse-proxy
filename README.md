@@ -53,7 +53,7 @@ make build
 make test
 ```
 
-## Format kode
+## Format code
 
 ```bash
 make fmt
