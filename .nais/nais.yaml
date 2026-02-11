@@ -40,5 +40,7 @@ spec:
   env:
     - name: UPSTREAM_URL
       value: "http://dapla-api"
+    - name: CLIENT_IP_HEADER
+      value: "X-Client-Ip"
     - name: ALLOWED_IPS
       value: "35.228.178.170,34.88.195.4,135.228.93.83,34.88.222.166" #nais-test, dapla-lab-test-eu-north1, dapla-lab-dev-eu-north1, nais-prod
