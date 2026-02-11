@@ -37,6 +37,7 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		"listen_addr", cfg.ListenAddr,
 		"health_listen_addr", cfg.HealthListenAddr,
 		"upstream_url", cfg.UpstreamURL,
+		"allowed_ips", cfg.AllowedIPs,
 		"client_ip_header", cfg.ClientIPHeader,
 	)
 
