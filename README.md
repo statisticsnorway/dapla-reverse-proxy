@@ -6,7 +6,7 @@ api).
 ## Features
 
 - Allows only traffic from configured IPs. For non-allowed ips `403 Forbidden` will be returned
-- Health checks endpoint: `GET /healthz` and `HEAD /healthz`
+- Health checks endpoint (/healthz`) on a dedicated listener
 - All other endpoints are forwarded to the upstream host.
 
 ## PS:
@@ -23,6 +23,7 @@ api).
 | `ALLOWED_IPS`                      | Yes      | -                 | Comma-separated IPs, e.g. `203.0.0.10,198.51.100.20` |
 | `CLIENT_IP_HEADER`                 | No       | `X-Forwarded-For` | Header used for IP allowlist checks                  |
 | `LISTEN_ADDR`                      | No       | `:8080`           | Address the proxy listens on                         |
+| `HEALTH_LISTEN_ADDR`               | No       | `:8081`           | Address where `GET/HEAD /healthz` is served          |
 | `SERVER_READ_TIMEOUT`              | No       | `15s`             | Maximum total request read time                      |
 | `SERVER_READ_HEADER_TIMEOUT`       | No       | `5s`              | Maximum time to read request headers                 |
 | `SERVER_WRITE_TIMEOUT`             | No       | `30s`             | Maximum time to write response                       |
@@ -45,4 +46,3 @@ go run ./cmd
 ```bash
 go build -o build/dapla-reverse-proxy ./cmd
 ```
-

@@ -60,11 +60,17 @@ func newProxyHandler(cfg config, upstream *url.URL, log *slog.Logger) *proxyHand
 	}
 }
 
-func (a *proxyHandler) routes() http.Handler {
+func (a *proxyHandler) proxyRoutes() http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/", http.HandlerFunc(a.handleProxy))
+
+	return a.recoveryMiddleware(mux)
+}
+
+func (a *proxyHandler) healthRoutes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", a.handleHealthz)
 	mux.HandleFunc("HEAD /healthz", a.handleHealthz)
-	mux.Handle("/", http.HandlerFunc(a.handleProxy))
 
 	return a.recoveryMiddleware(mux)
 }
@@ -73,6 +79,10 @@ func (a *proxyHandler) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
+}
+
+func handleNotFound(w http.ResponseWriter, r *http.Request) {
+	http.NotFound(w, r)
 }
 
 func (a *proxyHandler) handleProxy(w http.ResponseWriter, r *http.Request) {

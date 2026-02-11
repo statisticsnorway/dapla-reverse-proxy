@@ -13,6 +13,7 @@ import (
 
 type config struct {
 	ListenAddr                    string        `env:"LISTEN_ADDR,default=:8080"`
+	HealthListenAddr              string        `env:"HEALTH_LISTEN_ADDR,default=:8081"`
 	UpstreamURL                   *url.URL      `env:"UPSTREAM_URL,required"`
 	AllowedIPs                    []string      `env:"ALLOWED_IPS,required"`
 	ClientIPHeader                string        `env:"CLIENT_IP_HEADER,default=X-Forwarded-For"`

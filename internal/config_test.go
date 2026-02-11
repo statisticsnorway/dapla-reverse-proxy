@@ -41,7 +41,7 @@ func TestNormalizeAllowedIPsRejectsEmptyList(t *testing.T) {
 
 func TestLoadConfigAppliesDefaults(t *testing.T) {
 	cfg, err := loadConfig(envconfig.MapLookuper(map[string]string{
-		"UPSTREAM_URL": "https://internal-ingress.example.com",
+		"UPSTREAM_URL": "https://ssb.no",
 		"ALLOWED_IPS":  "203.0.113.10",
 	}))
 	if err != nil {
@@ -50,6 +50,9 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 
 	if cfg.ListenAddr != ":8080" {
 		t.Fatalf("unexpected listen address: %s", cfg.ListenAddr)
+	}
+	if cfg.HealthListenAddr != ":8081" {
+		t.Fatalf("unexpected health listen address: %s", cfg.HealthListenAddr)
 	}
 	if cfg.ReadTimeout != 15*time.Second {
 		t.Fatalf("unexpected read timeout: %s", cfg.ReadTimeout)

@@ -136,30 +136,14 @@ func TestClientIPFromRequest(t *testing.T) {
 					t.Fatalf("unexpected IP validity: got %t for %s", ip.IsValid(), ip)
 				}
 			}
-
 		})
 	}
 }
 
-func TestRoutes_HealthzIsNotProxiedToUpstream(t *testing.T) {
-	var upstreamHits int64
-	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		atomic.AddInt64(&upstreamHits, 1)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstreamServer.Close()
-
-	upstreamURL, err := url.Parse(upstreamServer.URL)
-	if err != nil {
-		t.Fatalf("unable to parse upstream URL: %v", err)
-	}
-
-	cfg := config{
-		AllowedIPs:     []string{"198.51.100.10"},
-		ClientIPHeader: "X-Forwarded-For",
-	}
+func TestHealthRoutes_HealthzRespondsOK(t *testing.T) {
+	cfg := config{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler := newProxyHandler(cfg, upstreamURL, logger).routes()
+	handler := newProxyHandler(cfg, nil, logger).healthRoutes()
 
 	tests := []struct {
 		name   string
@@ -182,13 +166,9 @@ func TestRoutes_HealthzIsNotProxiedToUpstream(t *testing.T) {
 			}
 		})
 	}
-
-	if hits := atomic.LoadInt64(&upstreamHits); hits != 0 {
-		t.Fatalf("expected no upstream hits for /healthz, got %d", hits)
-	}
 }
 
-func TestRoutes_ProxiesNonHealthzPaths(t *testing.T) {
+func TestProxyRoutes_ProxiesNonHealthzPaths(t *testing.T) {
 	tests := []struct {
 		name   string
 		method string
@@ -225,7 +205,7 @@ func TestRoutes_ProxiesNonHealthzPaths(t *testing.T) {
 				ClientIPHeader: "X-Forwarded-For",
 			}
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-			handler := newProxyHandler(cfg, upstreamURL, logger).routes()
+			handler := newProxyHandler(cfg, upstreamURL, logger).proxyRoutes()
 
 			req := httptest.NewRequest(test.method, test.target, nil)
 			req.Header.Set("X-Forwarded-For", "198.51.100.10")
