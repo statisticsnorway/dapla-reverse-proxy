@@ -44,5 +44,17 @@ go run ./cmd
 ## Build
 
 ```bash
-go build -o build/dapla-reverse-proxy ./cmd
+make build
+```
+
+## Test
+
+```bash
+make test
+```
+
+## Format kode
+
+```bash
+make fmt
 ```

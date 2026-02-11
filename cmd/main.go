@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"dapla-reverse-proxy/internal"
 	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"dapla-reverse-proxy/internal"
 )
 
 func main() {

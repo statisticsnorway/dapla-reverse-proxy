@@ -1,0 +1,26 @@
+name: Deploy to nais-prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_version:
+        description: "Which version should be deployed"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Deploy to Nais
+        uses: nais/deploy/actions/deploy@v2
+        env:
+          TEAM: dapla-platform
+          CLUSTER: prod
+          RESOURCE: .nais/nais.yaml
+          VAR: image=europe-north1-docker.pkg.dev/${{ secrets.NAIS_MANAGEMENT_PROJECT_ID }}/dapla-platform/dapla-reverse-proxy:${{ github.event.inputs.image_version }}

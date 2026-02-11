@@ -1,0 +1,44 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: dapla-reverse-proxy
+  namespace: dapla-platform
+  labels:
+    team: dapla-platform
+spec:
+  image: "{{image}}"
+
+  port: 8080
+
+  accessPolicy:
+    outbound:
+      rules:
+        - application: dapla-api
+
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "50m"
+    limits:
+      memory: "64Mi"
+
+  replicas:
+    max: 2
+    min: 1
+
+  readiness:
+    path: /healthz
+    port: 8081
+
+  liveness:
+    path: /healthz
+    port: 8081
+
+  ingresses:
+    - https://ext-dapla-api.ssb.no/
+
+  env:
+    - name: UPSTREAM_URL
+      value: "http://dapla-api"
+    - name: ALLOWED_IPS
+      value: "35.228.178.170,34.88.195.4,135.228.93.83" #nais-test, dapla-lab-test-eu-north1, dapla-lab-dev-eu-north1
