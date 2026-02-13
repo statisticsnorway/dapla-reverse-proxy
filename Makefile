@@ -14,3 +14,6 @@ staticcheck:
 
 vulncheck:
 	go tool golang.org/x/vuln/cmd/govulncheck ./...
+
+deadcode:
+	go tool golang.org/x/tools/cmd/deadcode -test -tags integration_test ./...

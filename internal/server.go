@@ -56,12 +56,7 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		}
 		_ = shutdownServer(context.Background(), cfg.ShutdownTimeout, healthServer)
 
-		err := <-errCh
-		if err == nil || errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-
-		return fmt.Errorf("shutdown returned error: %w", err)
+		return nil
 	}
 }
 
