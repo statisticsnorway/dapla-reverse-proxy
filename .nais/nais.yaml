@@ -35,9 +35,13 @@ spec:
     port: 8081
 
   ingresses:
-    - https://ext-dapla-api.ssb.no/
+    - https://dapla-api.ssb.no/
 
   env:
+    - name: LISTEN_ADDR
+      value: ":8080"
+    - name: HEALTH_LISTEN_ADDR
+      value: ":8081"
     - name: UPSTREAM_URL
       value: "http://dapla-api"
     - name: CLIENT_IP_HEADER

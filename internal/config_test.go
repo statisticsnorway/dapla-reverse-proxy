@@ -1,12 +1,64 @@
 package internal
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	envconfig "github.com/sethvargo/go-envconfig"
 )
+
+func TestValidUpstreamUrl(t *testing.T) {
+	parseUrl := func(rawUrl string) *url.URL {
+		parsed, _ := url.Parse(rawUrl)
+		return parsed
+	}
+	tests := map[string]struct {
+		input              *url.URL
+		expectedErrMessage string
+	}{
+		"url is required": {
+			input:              nil,
+			expectedErrMessage: "UPSTREAM_URL must be set",
+		},
+		"http is allowed": {
+			input:              parseUrl("http://ssb.no"),
+			expectedErrMessage: "",
+		},
+		"https is allowed": {
+			input:              parseUrl("https://ssb.no"),
+			expectedErrMessage: "",
+		},
+		"schema is required": {
+			input:              parseUrl("missing-schema.no"),
+			expectedErrMessage: "UPSTREAM_URL scheme must be http or https",
+		},
+		"host is required": {
+			input:              parseUrl("http://"),
+			expectedErrMessage: "UPSTREAM_URL must include host",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := validateUpstreamUrl(test.input)
+			if err == nil {
+				if test.expectedErrMessage != "" {
+					t.Fatalf("expected error but got nil: %s", test.expectedErrMessage)
+				}
+			}
+			if err != nil {
+				if test.expectedErrMessage == "" {
+					t.Fatalf("did not expect error, but got %s", err.Error())
+				}
+				if err.Error() != test.expectedErrMessage {
+					t.Fatalf("expected error message %s, but got %s", err.Error(), test.expectedErrMessage)
+				}
+
+			}
+		})
+	}
+}
 
 func TestNormalizeAllowedIPs(t *testing.T) {
 	result, err := normalizeAllowedIPs([]string{"192.0.1.11", "2001:aaa::1"})

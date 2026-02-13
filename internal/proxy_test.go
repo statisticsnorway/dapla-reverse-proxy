@@ -11,57 +11,6 @@ import (
 	"testing"
 )
 
-func TestValidUpstreamUrl(t *testing.T) {
-	parseUrl := func(rawUrl string) *url.URL {
-		parsed, _ := url.Parse(rawUrl)
-		return parsed
-	}
-	tests := map[string]struct {
-		input              *url.URL
-		expectedErrMessage string
-	}{
-		"url is required": {
-			input:              nil,
-			expectedErrMessage: "UPSTREAM_URL must be set",
-		},
-		"http is allowed": {
-			input:              parseUrl("http://ssb.no"),
-			expectedErrMessage: "",
-		},
-		"https is allowed": {
-			input:              parseUrl("https://ssb.no"),
-			expectedErrMessage: "",
-		},
-		"schema is required": {
-			input:              parseUrl("missing-schema.no"),
-			expectedErrMessage: "UPSTREAM_URL scheme must be http or https",
-		},
-		"host is required": {
-			input:              parseUrl("http://"),
-			expectedErrMessage: "UPSTREAM_URL must include host",
-		},
-	}
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			err := validateUpstreamUrl(test.input)
-			if err == nil {
-				if test.expectedErrMessage != "" {
-					t.Fatalf("expected error but got nil: %s", test.expectedErrMessage)
-				}
-			}
-			if err != nil {
-				if test.expectedErrMessage == "" {
-					t.Fatalf("did not expect error, but got %s", err.Error())
-				}
-				if err.Error() != test.expectedErrMessage {
-					t.Fatalf("expected error message %s, but got %s", err.Error(), test.expectedErrMessage)
-				}
-
-			}
-		})
-	}
-}
-
 func TestIPAllowed(t *testing.T) {
 	allowedIPs := map[string]struct{}{
 		"10.10.2.2":    {},
@@ -94,12 +43,26 @@ func TestClientIPFromRequest(t *testing.T) {
 			expectErr:     false,
 			expectValidIP: true,
 		},
-		"header with port": {
+		"header with one ip": {
 			headerName:    "X-Real-IP",
-			headerValue:   "198.51.100.10:443",
+			headerValue:   "198.51.100.10",
 			expectedIP:    "198.51.100.10",
 			expectErr:     false,
 			expectValidIP: true,
+		},
+		"header with multiple ip": {
+			headerName:    "X-Real-IP",
+			headerValue:   "198.51.100.2,10.0.0.222",
+			expectedIP:    "198.51.100.2",
+			expectErr:     false,
+			expectValidIP: true,
+		},
+		"header with port should fail": {
+			headerName:    "X-Real-IP",
+			headerValue:   "198.51.100.10:442",
+			expectedIP:    "198.51.100.10",
+			expectErr:     true,
+			expectValidIP: false,
 		},
 		"returns error when header has no valid ip": {
 			headerName:    "X-Forwarded-For",
@@ -168,26 +131,28 @@ func TestHealthRoutes_HealthzRespondsOK(t *testing.T) {
 	}
 }
 
-func TestProxyRoutes_ProxiesNonHealthzPaths(t *testing.T) {
+func TestProxyRoutes_ProxiesToUpstreamExceptHealthz(t *testing.T) {
 	tests := []struct {
-		name   string
-		method string
-		target string
+		name                string
+		method              string
+		target              string
+		expectedUpstreamHit bool
 	}{
-		{name: "root get path", method: http.MethodGet, target: "/"},
-		{name: "nested get path", method: http.MethodGet, target: "/foo/bar"},
-		{name: "post path with query", method: http.MethodPost, target: "/api/v1/items?limit=10"},
+		{name: "root get path", method: http.MethodGet, target: "/healthz", expectedUpstreamHit: false},
+		{name: "root get path", method: http.MethodGet, target: "/", expectedUpstreamHit: true},
+		{name: "nested get path", method: http.MethodGet, target: "/foo/bar", expectedUpstreamHit: true},
+		{name: "post path with query", method: http.MethodPost, target: "/api/v1/items?limit=10", expectedUpstreamHit: true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var upstreamHits int64
+			var upstreamHits int32
 			var resultMethod string
 			var resultPath string
 			var resultQuery string
 
 			upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				atomic.AddInt64(&upstreamHits, 1)
+				atomic.AddInt32(&upstreamHits, 1)
 				resultMethod = r.Method
 				resultPath = r.URL.Path
 				resultQuery = r.URL.RawQuery
@@ -200,40 +165,50 @@ func TestProxyRoutes_ProxiesNonHealthzPaths(t *testing.T) {
 				t.Fatalf("unable to parse upstream URL: %v", err)
 			}
 
+			allowedIp := "198.51.100.10"
+			clientHeader := "X-Forwarded-For"
+
 			cfg := config{
-				AllowedIPs:     []string{"198.51.100.10"},
-				ClientIPHeader: "X-Forwarded-For",
+				AllowedIPs:     []string{allowedIp},
+				ClientIPHeader: clientHeader,
 			}
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 			handler := newProxyHandler(cfg, upstreamURL, logger).proxyRoutes()
 
 			req := httptest.NewRequest(test.method, test.target, nil)
-			req.Header.Set("X-Forwarded-For", "198.51.100.10")
+			req.Header.Set(clientHeader, allowedIp)
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, req)
 
 			if recorder.Code != http.StatusOK {
-				t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+				t.Errorf("expected status %d, got %d", http.StatusOK, recorder.Code)
 			}
-			if hits := atomic.LoadInt64(&upstreamHits); hits != 1 {
-				t.Fatalf("expected one upstream hit, got %d", hits)
-			}
+			hits := atomic.LoadInt32(&upstreamHits)
+			if test.expectedUpstreamHit {
+				if hits := atomic.LoadInt32(&upstreamHits); hits != 1 {
+					t.Errorf("expected one upstream hit, got %d", hits)
+				}
 
-			if resultMethod != test.method {
-				t.Fatalf("expected upstream method %s, got %s", test.method, resultMethod)
-			}
+				if resultMethod != test.method {
+					t.Errorf("expected upstream method %s, got %s", test.method, resultMethod)
+				}
 
-			expectedURL, err := url.Parse(test.target)
-			if err != nil {
-				t.Fatalf("unable to parse test target %q: %v", test.target, err)
-			}
+				expectedURL, err := url.Parse(test.target)
+				if err != nil {
+					t.Fatalf("unable to parse test target %q: %v", test.target, err)
+				}
 
-			if resultPath != expectedURL.Path {
-				t.Fatalf("expected upstream path %s, got %s", expectedURL.Path, resultPath)
-			}
-			if resultQuery != expectedURL.RawQuery {
-				t.Fatalf("expected upstream query %s, got %s", expectedURL.RawQuery, resultQuery)
+				if resultPath != expectedURL.Path {
+					t.Errorf("expected upstream path %s, got %s", expectedURL.Path, resultPath)
+				}
+				if resultQuery != expectedURL.RawQuery {
+					t.Errorf("expected upstream query %s, got %s", expectedURL.RawQuery, resultQuery)
+				}
+			} else {
+				if hits != 0 {
+					t.Errorf("expected zero upstream hit, got %d", hits)
+				}
 			}
 		})
 	}

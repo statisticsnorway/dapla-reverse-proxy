@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/netip"
@@ -33,7 +32,6 @@ func newProxyHandler(cfg config, upstream *url.URL, log *slog.Logger) *proxyHand
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(upstream)
 			pr.SetXForwarded()
-			pr.Out.Host = upstream.Host
 		},
 		Transport: transport,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
@@ -62,6 +60,8 @@ func newProxyHandler(cfg config, upstream *url.URL, log *slog.Logger) *proxyHand
 
 func (a *proxyHandler) proxyRoutes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", a.handleHealthz)
+	mux.HandleFunc("HEAD /healthz", a.handleHealthz)
 	mux.Handle("/", http.HandlerFunc(a.handleProxy))
 
 	return a.recoveryMiddleware(mux)
@@ -117,16 +117,16 @@ func ipAllowed(ip netip.Addr, allowlist map[string]struct{}) bool {
 func clientIPFromRequest(r *http.Request, header string) (netip.Addr, error) {
 	rawHeaderValue := r.Header.Get(header)
 	if rawHeaderValue != "" {
-		for item := range strings.SplitSeq(rawHeaderValue, ",") {
-			if ip, ok := parseIPCandidate(item); ok {
-				return ip, nil
-			}
+		firstIpCandidate, _, _ := strings.Cut(rawHeaderValue, ",")
+		if ip, ok := parseIPCandidate(firstIpCandidate); ok {
+			return ip, nil
 		}
 	}
 
 	return netip.Addr{}, fmt.Errorf("no valid client IP found in %s", header)
 }
 
+// validate that the string actually is a valid ip
 func parseIPCandidate(raw string) (netip.Addr, bool) {
 	candidate := strings.TrimSpace(raw)
 	if candidate == "" {
@@ -135,13 +135,6 @@ func parseIPCandidate(raw string) (netip.Addr, bool) {
 
 	if ip, err := netip.ParseAddr(candidate); err == nil {
 		return ip, true
-	}
-
-	host, _, err := net.SplitHostPort(candidate)
-	if err == nil {
-		if ip, err := netip.ParseAddr(strings.TrimSpace(host)); err == nil {
-			return ip, true
-		}
 	}
 
 	return netip.Addr{}, false
