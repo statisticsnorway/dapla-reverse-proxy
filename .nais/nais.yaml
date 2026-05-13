@@ -6,6 +6,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header X-ProxyUser-IP $http_x_client_ip;
+    haproxy.org/request-set-header: "X-ProxyUser-IP %[req.hdr(X-Client-IP)]"
   labels:
     team: dapla-platform
 spec:
