@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    # Grouping patch updates and minor updates into two pull requests for all packages
+    groups:
+      dependencies-patch-updates:
+        update-types:
+          - "patch"
+      dependencies-minor-updates:
+        update-types:
+          - "minor"
+    commit-message:
+      prefix: "build: "
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build: "
