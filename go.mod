@@ -9,7 +9,7 @@ tool (
 	mvdan.cc/gofumpt
 )
 
-require github.com/sethvargo/go-envconfig v1.3.0
+require github.com/sethvargo/go-envconfig v1.3.1
 
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
