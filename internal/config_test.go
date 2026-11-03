@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	envconfig "github.com/sethvargo/go-envconfig"
+	envconfig "github.com/sethvargo/go-envconfig/v2"
 )
 
 func TestValidUpstreamUrl(t *testing.T) {
