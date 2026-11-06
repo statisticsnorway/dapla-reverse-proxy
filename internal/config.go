@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sethvargo/go-envconfig"
+	"github.com/sethvargo/go-envconfig/v2"
 )
 
 type config struct {
